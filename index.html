@@ -66,6 +66,19 @@ select{font-size:17px;font-weight:700;text-align:center}
 .uinfo td{padding:6px 0}
 .uinfo tr.net td{font-weight:700}
 .uinfo tr.net td.n.nt{color:var(--brass)}
+.pdfbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+@media(max-width:520px){.pdfbtns{grid-template-columns:1fr}}
+.pdfbtns .btn small{display:block;font-weight:400;font-size:12px;opacity:.85;margin-top:2px}
+.sheet.simple{font-size:12px}
+.sheet.simple td{padding:4px 0}
+.sheet.simple td .s{display:inline;margin-left:6px;font-size:10px}
+.sheet.simple tr.grp td{padding-top:8px}
+.sheet.simple h3{margin:12px 0 4px;font-size:14px}
+.sheet .pt th{background:#052f46;color:#f3efe6;font-weight:500;font-size:11px;padding:5px 6px;text-align:right}
+.sheet .pt th:first-child{text-align:left}
+.sheet .pt td{padding:4px 6px}
+.sheet .pt tr.hl2 td{background:#f6efe0;font-weight:700;color:#052f46}
+.sheet .pt tr.hl2 td.n{color:#a87d3c}
 .uinfo .why{margin-top:8px;padding:8px 10px;background:var(--brass-soft);border-radius:8px;font-size:13px}
 .uinfo .why b{color:var(--brass)}
 .uinfo .cnt{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
@@ -304,11 +317,15 @@ summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--mute)}
       <label>業務電話／LINE<input id="sTel" placeholder="例：0912-345-678"></label>
       <label>報告日期<input id="rDate" type="date"></label>
     </div>
-    <div style="margin-top:14px"><button class="btn gold" id="pdfBtn">下載 PDF 報告</button></div>
+    <div class="pdfbtns">
+      <button class="btn gold" id="pdfFull">下載詳細版 PDF<small>4 頁・格局、樓層方位、付款時程、試算條件</small></button>
+      <button class="btn primary" id="pdfSimple">下載簡易版 PDF<small>1 頁・價格結構、付款金、持有成本</small></button>
+    </div>
     <div class="status" id="pdfStatus" role="status"></div>
   </div>
   <div class="card">
-    <h3>預覽</h3>
+    <div class="maptools" style="margin:0 0 4px"><h3>預覽</h3>
+      <div class="seg2" role="group" aria-label="預覽版本"><button id="rvFull">詳細版</button><button id="rvSimple">簡易版</button></div></div>
     <div class="preview" id="preview"><div class="preview-in" id="previewIn"></div></div>
   </div>
 </section>
@@ -671,7 +688,7 @@ try{const f=JSON.parse(localStorage.getItem('ahbb-fields')||'{}');['sName','sTel
 function buildReport(){
   const R=calc(),I=R.I,fx=I.p.fx; const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const who=$('cName').value.trim(), sn=$('sName').value.trim(), st=$('sTel').value.trim(), dt=$('rDate').value;
-  const head=(n)=>`<div class="pn">${n}／4</div><div class="rh"><div class="rl"><img src="${LOGO}" alt=""><div><small>遠居國際資產 × PropEasy｜ARMANI HALLSON BUKIT BINTANG</small><h1>${who?esc(who)+' ':''}購屋試算報告</h1></div></div>
+  const head=(n,tot=4)=>`<div class="pn">${n}／${tot}</div><div class="rh"><div class="rl"><img src="${LOGO}" alt=""><div><small>遠居國際資產 × PropEasy｜ARMANI HALLSON BUKIT BINTANG</small><h1>${who?esc(who)+' ':''}購屋試算報告</h1></div></div>
     <div class="meta">單位 ${I.fl}-${I.no}<br>報告日期 ${esc(dt)}${sn?`<br>業務 ${esc(sn)}${st?'・'+esc(st):''}`:''}</div></div>`;
   const foot=`<div class="foot">本報告為試算參考，價格依 AHBB Sales Chart（2026-11-14），台幣以匯率 ${fx} 換算；實際以買賣合約（SPA）及開發商最新公告為準。平面圖與透視圖僅供示意。坪數以 1 坪＝35.583 平方呎換算。</div>`;
   const mode=S.mode==='cash';
@@ -740,18 +757,48 @@ function buildReport(){
     </table>
     <p style="font-size:11.5px;color:#676b72;margin-top:10px;line-height:1.7">匯率會隨市場變動，實際台幣金額以每次匯款當日的銀行匯率為準。本報告中所有台幣金額皆以上方匯率換算，馬幣金額為計算基準。</p>
     ${foot}</div>`;
-  $('previewIn').innerHTML=p1+pLoc+p2+p3;
+  // ---- simple one-page version (modelled on the 29-10 試算表) ----
+  const pc2=v=>(v*100).toFixed(2)+'%';
+  const ptRow=(k,v,a,b,cls='')=>`<tr class="${cls}"><td>${k}</td><td class="n">${fmt(v)}</td><td class="n">${fmt(v*fx)}</td><td class="n">${a}</td><td class="n">${b}</td></tr>`;
+  const ptab=`<table class="pt"><tr><th>項目</th><th>馬幣 RM</th><th>台幣 NT$</th><th>合約價 %</th><th>成交價 %</th></tr>
+    ${ptRow('合約原價',I.list,'100.00%','')}
+    ${ptRow('建商折價',I.list-I.spa,pc2(I.p.disc),'')}
+    ${ptRow('實際成交價',I.spa,pc2(1-I.p.disc),'100%','hl2')}
+    ${mode?'':ptRow('建商借款額',R.dl,'15.00%',pc2(R.dl/I.spa))+ptRow('銀行借款額',R.bl,'50.00%',pc2(R.bl/I.spa))+ptRow('買家自備款',R.own,pc2(R.own/I.list),pc2(R.own/I.spa))}
+  </table>`;
+  const pay=(mode?R.cash:R.loan.slice(4)).filter(r=>!(r.v===0&&!r.t));
+  const holdS=R.hold.slice(0,5);
+  const ps=`<div class="sheet simple">${head(1,1)}
+    <div class="big" style="margin-top:12px">
+      <div><small>單位</small><b>${I.fl}-${I.no}・Type ${I.type}</b></div><div><small>面積</small><b>${I.sf.toLocaleString()} 呎・${I.ping.toFixed(2)} 台坪</b></div>
+      <div><small>實際成交價</small><b>NT$ ${wan(I.spa*fx)}</b></div><div><small>每台坪單價</small><b>NT$ ${wan(I.spa*fx/I.ping)}</b></div>
+    </div>
+    <div class="two" style="grid-template-columns:1.6fr 1fr;align-items:start">
+      <div><h3>價格結構（${mode?'現金':'貸款'}）</h3>${ptab}<p style="font-size:10.5px;color:#6b7780;margin-top:4px">匯率 RM1＝NT$${fx}</p></div>
+      <div><h3>格局平面圖</h3><div class="pl" style="height:200px"><img src="${PLANS[I.bt]}" alt="" style="max-height:188px"></div></div>
+    </div>
+    <h3>購房付款金</h3>${rows(pay,fx)}
+    <h3>持有成本（交鑰匙後・每年）</h3>${rows(holdS,fx)}
+    <p style="font-size:10.5px;color:#6b7780;margin-top:4px">Five-Sense 前 3 年保底淨收入 4%（每年約 NT$ ${wan(R.g*fx)}），第 4 年起屋主 8：物管 2 分拆。</p>
+    ${foot}</div>`;
+  const simple=S.rv==='simple';
+  $('rvFull').classList.toggle('on',!simple); $('rvSimple').classList.toggle('on',simple);
+  $('previewIn').innerHTML=simple?ps:p1+pLoc+p2+p3;
+  const n=simple?1:4;
   const w=$('preview').clientWidth-20; const sc=Math.min(1,w/794);
-  $('previewIn').style.transform=`scale(${sc})`; $('previewIn').style.height=(1123*4+36)*sc+'px'; $('previewIn').style.width='794px';
+  $('previewIn').style.transform=`scale(${sc})`; $('previewIn').style.height=(1123*n+12*(n-1))*sc+'px'; $('previewIn').style.width='794px';
 }
+if(!S.rv) S.rv='full';
+$('rvFull').onclick=()=>{S.rv='full';buildReport();save();}; $('rvSimple').onclick=()=>{S.rv='simple';buildReport();save();};
 window.addEventListener('resize',()=>{if(S.view===3)buildReport();});
 
-$('pdfBtn').onclick=async()=>{
-  const btn=$('pdfBtn'),st=$('pdfStatus'); st.className='status'; st.textContent='正在產生 PDF…'; btn.disabled=true;
+$('pdfFull').onclick=()=>genPdf('full'); $('pdfSimple').onclick=()=>genPdf('simple');
+async function genPdf(ver){
+  const btn=$(ver==='simple'?'pdfSimple':'pdfFull'),st=$('pdfStatus'); st.className='status'; st.textContent='正在產生 PDF…'; btn.disabled=true;
   try{
     const dl=await window.claude?.use?.('downloads');
     if(!dl&&window.claude){st.className='status err';st.textContent='這個檢視模式無法下載檔案，請在 claude.ai 開啟此頁再試。';return;}
-    buildReport();
+    S.rv=ver; save(); buildReport();
     const holder=document.createElement('div'); holder.style.cssText='position:fixed;left:-10000px;top:0;width:794px';
     holder.innerHTML=$('previewIn').innerHTML; document.body.appendChild(holder);
     const pdf=new jspdf.jsPDF({unit:'pt',format:'a4',orientation:'portrait'});
@@ -762,14 +809,14 @@ $('pdfBtn').onclick=async()=>{
     }
     holder.remove();
     const I=unitInfo(); const who=$('cName').value.trim();
-    const name=`AHBB_${I.fl}-${I.no}_${S.mode==='cash'?'現金':'貸款'}試算${who?'_'+who:''}.pdf`;
+    const name=`AHBB_${I.fl}-${I.no}_${S.mode==='cash'?'現金':'貸款'}試算_${ver==='simple'?'簡易版':'詳細版'}${who?'_'+who:''}.pdf`;
     if(dl){ await dl.save({filename:name,data:pdf.output('blob')}); st.textContent='已交給瀏覽器下載：'+name; }
     else { pdf.save(name); st.textContent='已下載：'+name; }
   }catch(e){
     st.className='status err';
     st.textContent=e?.code==='declined'?'已取消下載。':e?.code==='rate_limited'?'下載視窗已開啟，請先完成或稍後再試。':'產生 PDF 失敗：'+(e?.message||e);
   }finally{btn.disabled=false;}
-};
+}
 
 function render(){save();const u=cur();if(!u)return;const p=P();
   $('sumU').textContent=`${u[0]}-${u[1]}・Type ${u[2]}`; $('sumP').textContent=`NT$ ${wan(u[5]*(1-p.disc)*p.fx)}`;
