@@ -245,7 +245,7 @@ summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--mute)}
         <button id="pmSpa">SPA 合約價</button><button id="pmNet">實際成交價</button>
       </div>
       <div class="seg2" role="group" aria-label="幣別">
-        <button id="cuNt">台幣</button><button id="cuRm">馬幣</button>
+        <button id="cuBoth">台幣＋馬幣</button><button id="cuNt">台幣</button><button id="cuRm">馬幣</button>
       </div>
       <button class="btn" id="mapFull">全螢幕看平面 ⤢</button>
     </div>
@@ -452,7 +452,9 @@ const isKing=no=>['01','10','11','19'].includes(no);
 if(!S.pm) S.pm='spa';
 const priceOf=(u,p)=>(S.pm==='spa'?u[5]:u[5]*(1-p.disc))*p.fx;
 const yi=v=>'約'+Math.round(v/10000).toLocaleString('en-US')+'萬';
-if(!S.cur) S.cur='nt';
+if(!S.cur||S.cur==='nt') S.cur='both';
+const PW=no=>['07','08','09','10','11'].includes(no)?31:['15','13A','13','12'].includes(no)?38:45;
+const rmL=(u,p)=>'RM'+((S.pm==='spa'?u[5]:u[5]*(1-p.disc))/10000).toFixed(1)+'萬';
 // pill label in the chosen currency (NT$ in 萬, or RM in 萬)
 const pl=(u,p)=>S.cur==='rm'?'RM'+((S.pm==='spa'?u[5]:u[5]*(1-p.disc))/10000).toFixed(1)+'萬':yi(priceOf(u,p));
 // building-wide unit counts
@@ -510,8 +512,10 @@ function mapSvg(rep){
         <text x="${cx}" y="${cy+o1+fs*.3}" font-size="${fs}" font-weight="700" fill="#2a2e35" text-anchor="middle" font-family="'Noto Sans TC',sans-serif">${baseType(u[2])} | ${u[3].toLocaleString('en-US')} sf</text>
         <text x="${cx}" y="${cy+o2+fs*.3}" font-size="${fs}" font-weight="700" fill="#2a2e35" text-anchor="middle" font-family="'Noto Sans TC',sans-serif">${(u[3]/PING).toFixed(2)} 台坪</text>`;})()}
       <polygon points="${pts}" fill="${sel?'rgba(201,152,64,.30)':dim?'rgba(250,248,244,.78)':'rgba(255,255,255,0)'}" stroke="${sel?(rep?'#052f46':'#b07b2c'):'none'}" stroke-width="${rep?6:3.5}" stroke-linejoin="round"/>
-      <rect x="${cx-22.5}" y="${cy-6}" width="45" height="12" rx="6" fill="${sel?'#b07b2c':'#0b2440'}"/>
-      <text x="${cx}" y="${cy+3}" font-size="8" font-weight="700" fill="#fff" text-anchor="middle">${pl(u,p)}</text>
+      ${S.cur==='both'?(()=>{const pw=PW(no),k=pw/45;return `<rect x="${cx-pw/2}" y="${cy-6}" width="${pw}" height="20" rx="6" fill="${sel?'#b07b2c':'#0b2440'}"/>
+      <text x="${cx}" y="${cy+2.6}" font-size="${(7.6*Math.max(k,.87)).toFixed(2)}" font-weight="700" fill="#fff" text-anchor="middle">${yi(priceOf(u,p))}</text>
+      <text x="${cx}" y="${cy+11}" font-size="${(6.4*Math.max(k,.87)).toFixed(2)}" font-weight="700" fill="${sel?'#fff3d6':'#d6b16d'}" text-anchor="middle">${rmL(u,p)}</text>`;})():`<rect x="${cx-22.5}" y="${cy-6}" width="45" height="12" rx="6" fill="${sel?'#b07b2c':'#0b2440'}"/>
+      <text x="${cx}" y="${cy+3}" font-size="8" font-weight="700" fill="#fff" text-anchor="middle">${pl(u,p)}</text>`}
     </g>`;
   }
   for(const [no,y] of KINGS){
@@ -522,7 +526,7 @@ function mapSvg(rep){
       <text x="580" y="${y+3}" font-size="7.5" font-weight="700" fill="#2a2e35" text-anchor="middle">${baseType(u[2])}</text>
       <text x="606" y="${y+3}" font-size="7.5" fill="#2a2e35" text-anchor="middle">${u[3].toLocaleString('en-US')} sf</text>
       <text x="646" y="${y+3}" font-size="7.5" font-weight="700" fill="#2a2e35" text-anchor="middle">${(u[3]/PING).toFixed(2)} 台坪</text>
-      <text x="692" y="${y+3.5}" font-size="9" font-weight="700" fill="#2a2e35" text-anchor="middle">${pl(u,p)}</text></g>`;
+      ${S.cur==='both'?`<text x="692" y="${y+1}" font-size="8" font-weight="700" fill="#2a2e35" text-anchor="middle">${yi(priceOf(u,p))}</text><text x="692" y="${y+8.2}" font-size="6.2" font-weight="700" fill="#a87d3c" text-anchor="middle">${rmL(u,p)}</text>`:`<text x="692" y="${y+3.5}" font-size="9" font-weight="700" fill="#2a2e35" text-anchor="middle">${pl(u,p)}</text>`}</g>`;
   }
   if(rep){
     // callout pointing at the chosen unit
@@ -539,7 +543,7 @@ function drawMap(){
   const prev=$('map').scrollLeft;
   $('map').innerHTML=mapSvg();
   $('types').querySelectorAll('.type').forEach(b=>b.classList.toggle('on',b.dataset.t===S.ftype));
-  $('pmSpa').classList.toggle('on',S.pm==='spa'); $('pmNet').classList.toggle('on',S.pm!=='spa'); $('cuNt').classList.toggle('on',S.cur!=='rm'); $('cuRm').classList.toggle('on',S.cur==='rm'); showInfo();
+  $('pmSpa').classList.toggle('on',S.pm==='spa'); $('pmNet').classList.toggle('on',S.pm!=='spa'); $('cuBoth').classList.toggle('on',S.cur==='both'); $('cuNt').classList.toggle('on',S.cur==='nt'); $('cuRm').classList.toggle('on',S.cur==='rm'); showInfo();
   const p=P();
   $('mapNote').textContent=`台幣價格依${S.pm==='spa'?' SPA 合約價':'實際成交價（SPA 價扣建商折價 '+Math.round(p.disc*100)+'%）'}換算，匯率 RM1＝NT$${p.fx}。格內戶型與面積以標準層標示${S.floor==='12'?'；12 樓部分單位面積較大，請以單位資料為準':''}。`;
   // keep the selected unit in view on narrow screens
@@ -550,7 +554,7 @@ function drawMap(){
 function pickUnit(no,scroll){S.unit=no;window.__mapPicked=true;render();if(scroll)$('unitCard').scrollIntoView({behavior:'smooth',block:'start'});}
 $('map').addEventListener('click',e=>{const g=e.target.closest('.tile');if(g)pickUnit(g.dataset.u,true);});
 $('map').addEventListener('keydown',e=>{const g=e.target.closest('.tile');if(g&&(e.key==='Enter'||e.key===' ')){e.preventDefault();pickUnit(g.dataset.u,true);}});
-$('cuNt').onclick=()=>{S.cur='nt';render();}; $('cuRm').onclick=()=>{S.cur='rm';render();};
+$('cuNt').onclick=()=>{S.cur='nt';render();}; $('cuBoth').onclick=()=>{S.cur='both';render();}; $('cuRm').onclick=()=>{S.cur='rm';render();};
 ['map','tmap'].forEach(id=>{const el=$(id); el.addEventListener('mouseover',e=>{const g=e.target.closest('.tile'); if(g&&g.dataset.u) showInfo(g.dataset.u);}); el.addEventListener('mouseleave',()=>showInfo());});
 $('pmSpa').onclick=()=>{S.pm='spa';render();}; $('pmNet').onclick=()=>{S.pm='net';render();};
 $('mapFull').onclick=()=>{ $('zoomT').textContent=`L${S.floor} 房控平面圖・點單位可選取`; $('zoomBody').innerHTML=mapSvg(); $('zoom').hidden=false;
@@ -597,8 +601,7 @@ function tileSvg(){
       ${r==='top'?`<text x="${x+w-3}" y="${y+9}" font-size="7.5" fill="${fg}" text-anchor="end">★</text>`:''}
       ${fitT(cx,y+h*.30,no,13,mw-14,fg,1)}
       ${fitT(cx,y+h*.50,`${baseType(u[2])}・${(u[3]/PING).toFixed(1)}坪`,7.5,mw,fg)}
-      ${fitT(cx,y+h*.68,`${u[3].toLocaleString('en-US')} sf`,7,mw,fg)}
-      ${fitT(cx,y+h*.88,pl(u,p).replace('約',''),8.5,mw,fg,1)}    </g>`;
+      ${S.cur==='both'?fitT(cx,y+h*.71,yi(priceOf(u,p)).replace('約',''),8.5,mw,fg,1)+fitT(cx,y+h*.89,rmL(u,p),7,mw,fg):fitT(cx,y+h*.68,`${u[3].toLocaleString('en-US')} sf`,7,mw,fg)+fitT(cx,y+h*.88,pl(u,p).replace('約',''),8.5,mw,fg,1)}    </g>`;
   }
   return s+'</svg>';
 }
