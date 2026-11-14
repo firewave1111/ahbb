@@ -55,6 +55,17 @@ select{font-size:17px;font-weight:700;text-align:center}
 .map{margin-top:12px;overflow-x:auto;border-radius:12px;border:1px solid var(--line);background:#f7f3ec;-webkit-overflow-scrolling:touch}
 .map svg{width:100%;min-width:680px;height:auto;display:block}
 .map.tilemap{background:var(--surface);border:0}
+.uinfo{margin-top:10px;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:12px;padding:10px 12px;background:var(--surface)}
+.uinfo .uh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.uinfo .uh b{font-family:var(--display);font-size:18px;color:var(--ink)}
+.uinfo .uh span{font-size:12px;color:var(--mute)}
+.uinfo .hint{font-size:11px;color:var(--brass);font-weight:700;letter-spacing:.06em}
+.uinfo table{margin-top:6px;font-size:13px}
+.uinfo th{font-size:11px;color:var(--mute);font-weight:500;text-align:right;padding:2px 0 4px 8px}
+.uinfo th:first-child{text-align:left;padding-left:0}
+.uinfo td{padding:6px 0}
+.uinfo tr.net td{font-weight:700}
+.uinfo tr.net td.n.nt{color:var(--brass)}
 .map.tilemap svg{min-width:340px}
 .maptools{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
 .seg2{display:inline-flex;background:var(--bg);border-radius:10px;padding:3px;gap:3px}
@@ -203,9 +214,13 @@ summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--mute)}
       <span><i style="background:var(--tile);border:1px solid var(--line)"></i>其他單位</span>
       <span><i style="background:var(--sel);border:2px solid var(--gold)"></i>已選</span>
     </div>
+    <div class="uinfo" id="uinfo" aria-live="polite"></div>
     <div class="maptools">
       <div class="seg2" role="group" aria-label="價格顯示">
         <button id="pmSpa">SPA 合約價</button><button id="pmNet">實際成交價</button>
+      </div>
+      <div class="seg2" role="group" aria-label="幣別">
+        <button id="cuNt">台幣</button><button id="cuRm">馬幣</button>
       </div>
       <button class="btn" id="mapFull">全螢幕看平面 ⤢</button>
     </div>
@@ -402,6 +417,21 @@ const isKing=no=>['01','10','11','19'].includes(no);
 if(!S.pm) S.pm='spa';
 const priceOf=(u,p)=>(S.pm==='spa'?u[5]:u[5]*(1-p.disc))*p.fx;
 const yi=v=>'約'+Math.round(v/10000).toLocaleString('en-US')+'萬';
+if(!S.cur) S.cur='nt';
+// pill label in the chosen currency (NT$ in 萬, or RM in 萬)
+const pl=(u,p)=>S.cur==='rm'?'RM'+((S.pm==='spa'?u[5]:u[5]*(1-p.disc))/10000).toFixed(1)+'萬':yi(priceOf(u,p));
+function infoHtml(no){
+  const p=P(), u=byKey[S.floor+'-'+no]; if(!u) return '';
+  const spa=u[5], net=u[5]*(1-p.disc), ping=u[3]/PING, c=COL[no];
+  return `<div class="uh"><b>${u[0]}-${u[1]}</b><span class="hint">${no===S.unit?'已選單位':'預覽'}</span></div>
+   <div class="uh"><span>Type ${u[2]}・${u[3].toLocaleString('en-US')} sf・${ping.toFixed(2)} 台坪・${c.key===2?'雙鑰':'1 key'}・${c.face}</span></div>
+   <table><tr><th>價格</th><th>馬幣 RM</th><th>台幣 NT$</th></tr>
+   <tr><td>SPA 合約價</td><td class="n">${fmt(spa)}</td><td class="n">${fmt(spa*p.fx)}</td></tr>
+   <tr class="net"><td>實際成交價<span class="s">建商折價 ${Math.round(p.disc*100)}%</span></td><td class="n">${fmt(net)}</td><td class="n nt">${fmt(net*p.fx)}</td></tr>
+   <tr><td>每坪單價（成交）</td><td class="n">${fmt(net/ping)}</td><td class="n">${fmt(net*p.fx/ping)}</td></tr></table>
+   <p class="note" style="margin-top:4px">匯率 RM1＝NT$${p.fx}・台幣約 ${wan(net*p.fx)}</p>`;
+}
+const showInfo=no=>{$('uinfo').innerHTML=infoHtml(no||S.unit);};
 
 function mapSvg(rep){
   const p=P();
@@ -423,7 +453,7 @@ function mapSvg(rep){
         <text x="${cx}" y="${cy+o2+fs*.3}" font-size="${fs}" font-weight="700" fill="#2a2e35" text-anchor="middle" font-family="'Noto Sans TC',sans-serif">${(u[3]/PING).toFixed(2)} 台坪</text>`;})()}
       <polygon points="${pts}" fill="${sel?'rgba(201,152,64,.30)':dim?'rgba(250,248,244,.78)':'rgba(255,255,255,0)'}" stroke="${sel?(rep?'#052f46':'#b07b2c'):'none'}" stroke-width="${rep?6:3.5}" stroke-linejoin="round"/>
       <rect x="${cx-22.5}" y="${cy-6}" width="45" height="12" rx="6" fill="${sel?'#b07b2c':'#0b2440'}"/>
-      <text x="${cx}" y="${cy+3}" font-size="8" font-weight="700" fill="#fff" text-anchor="middle">${yi(v)}</text>
+      <text x="${cx}" y="${cy+3}" font-size="8" font-weight="700" fill="#fff" text-anchor="middle">${pl(u,p)}</text>
     </g>`;
   }
   for(const [no,y] of KINGS){
@@ -434,7 +464,7 @@ function mapSvg(rep){
       <text x="580" y="${y+3}" font-size="7.5" font-weight="700" fill="#2a2e35" text-anchor="middle">${baseType(u[2])}</text>
       <text x="606" y="${y+3}" font-size="7.5" fill="#2a2e35" text-anchor="middle">${u[3].toLocaleString('en-US')} sf</text>
       <text x="646" y="${y+3}" font-size="7.5" font-weight="700" fill="#2a2e35" text-anchor="middle">${(u[3]/PING).toFixed(2)} 台坪</text>
-      <text x="692" y="${y+3.5}" font-size="9" font-weight="700" fill="#2a2e35" text-anchor="middle">${yi(priceOf(u,p))}</text></g>`;
+      <text x="692" y="${y+3.5}" font-size="9" font-weight="700" fill="#2a2e35" text-anchor="middle">${pl(u,p)}</text></g>`;
   }
   if(rep){
     // callout pointing at the chosen unit
@@ -451,7 +481,7 @@ function drawMap(){
   const prev=$('map').scrollLeft;
   $('map').innerHTML=mapSvg();
   $('types').querySelectorAll('.type').forEach(b=>b.classList.toggle('on',b.dataset.t===S.ftype));
-  $('pmSpa').classList.toggle('on',S.pm==='spa'); $('pmNet').classList.toggle('on',S.pm!=='spa');
+  $('pmSpa').classList.toggle('on',S.pm==='spa'); $('pmNet').classList.toggle('on',S.pm!=='spa'); $('cuNt').classList.toggle('on',S.cur!=='rm'); $('cuRm').classList.toggle('on',S.cur==='rm'); showInfo();
   const p=P();
   $('mapNote').textContent=`台幣價格依${S.pm==='spa'?' SPA 合約價':'實際成交價（SPA 價扣建商折價 '+Math.round(p.disc*100)+'%）'}換算，匯率 RM1＝NT$${p.fx}。格內戶型與面積以標準層標示${S.floor==='12'?'；12 樓部分單位面積較大，請以單位資料為準':''}。`;
   // keep the selected unit in view on narrow screens
@@ -462,10 +492,12 @@ function drawMap(){
 function pickUnit(no,scroll){S.unit=no;window.__mapPicked=true;render();if(scroll)$('unitCard').scrollIntoView({behavior:'smooth',block:'start'});}
 $('map').addEventListener('click',e=>{const g=e.target.closest('.tile');if(g)pickUnit(g.dataset.u,true);});
 $('map').addEventListener('keydown',e=>{const g=e.target.closest('.tile');if(g&&(e.key==='Enter'||e.key===' ')){e.preventDefault();pickUnit(g.dataset.u,true);}});
+$('cuNt').onclick=()=>{S.cur='nt';render();}; $('cuRm').onclick=()=>{S.cur='rm';render();};
+['map','tmap'].forEach(id=>{const el=$(id); el.addEventListener('mouseover',e=>{const g=e.target.closest('.tile'); if(g&&g.dataset.u) showInfo(g.dataset.u);}); el.addEventListener('mouseleave',()=>showInfo());});
 $('pmSpa').onclick=()=>{S.pm='spa';render();}; $('pmNet').onclick=()=>{S.pm='net';render();};
 $('mapFull').onclick=()=>{ $('zoomT').textContent=`L${S.floor} 房控平面圖・點單位可選取`; $('zoomBody').innerHTML=mapSvg(); $('zoom').hidden=false;
   const zb=$('zoomBody'); const k=1400/772; zb.scrollLeft=Math.max(0,MAPU[S.unit].c[0]*k-zb.clientWidth/2); zb.scrollTop=Math.max(0,MAPU[S.unit].c[1]*k-zb.clientHeight/2); };
-$('zoomBody').addEventListener('click',e=>{const g=e.target.closest('.tile');if(g){S.unit=g.dataset.u;render();$('zoomBody').innerHTML=mapSvg();}});
+$('zoomBody').addEventListener('click',e=>{const g=e.target.closest('.tile');if(g){S.unit=g.dataset.u;render();$('zoomBody').innerHTML=mapSvg();const u=cur(),p=P(),n=u[5]*(1-p.disc);$('zoomT').textContent=`${u[0]}-${u[1]}・${baseType(u[2])}・${u[3].toLocaleString('en-US')} sf・成交 RM ${fmt(n)}／NT$ ${fmt(n*p.fx)}`;}});
 
 /* ---------- tile (方塊圖) view ---------- */
 const POS = {
@@ -508,7 +540,7 @@ function tileSvg(){
       ${fitT(cx,y+h*.30,no,13,mw-14,fg,1)}
       ${fitT(cx,y+h*.50,`${baseType(u[2])}・${(u[3]/PING).toFixed(1)}坪`,7.5,mw,fg)}
       ${fitT(cx,y+h*.68,`${u[3].toLocaleString('en-US')} sf`,7,mw,fg)}
-      ${fitT(cx,y+h*.88,`${Math.round(v/10000).toLocaleString('en-US')}萬`,8.5,mw,fg,1)}    </g>`;
+      ${fitT(cx,y+h*.88,pl(u,p).replace('約',''),8.5,mw,fg,1)}    </g>`;
   }
   return s+'</svg>';
 }
