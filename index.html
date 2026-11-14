@@ -66,6 +66,18 @@ select{font-size:17px;font-weight:700;text-align:center}
 .uinfo td{padding:6px 0}
 .uinfo tr.net td{font-weight:700}
 .uinfo tr.net td.n.nt{color:var(--brass)}
+.uinfo .why{margin-top:8px;padding:8px 10px;background:var(--brass-soft);border-radius:8px;font-size:13px}
+.uinfo .why b{color:var(--brass)}
+.uinfo .cnt{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.uinfo .cnt span{font-size:12px;background:var(--navy-soft);color:var(--navy);border-radius:999px;padding:3px 10px;font-weight:700}
+.rank{display:grid;gap:8px;margin-top:10px}
+.rk{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;text-align:left;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px;cursor:pointer;width:100%}
+.rk.on{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
+.rk .no{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:var(--sel);color:var(--gold)}
+.rk b{display:block;font-size:15px}
+.rk small{display:block;color:var(--mute);font-size:12px;line-height:1.45}
+.rk .q{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rk .q b{color:var(--brass)}
 .map.tilemap svg{min-width:340px}
 .maptools{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
 .seg2{display:inline-flex;background:var(--bg);border-radius:10px;padding:3px;gap:3px}
@@ -225,6 +237,12 @@ summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--mute)}
       <button class="btn" id="mapFull">全螢幕看平面 ⤢</button>
     </div>
     <p class="note" id="mapNote"></p>
+  </div>
+
+  <div class="card">
+    <h3>推薦選戶順序</h3>
+    <p class="lead">依視野、總價與稀有度排序，點一列即可在平面圖上選取該戶。戶數為全案總數。</p>
+    <div class="rank" id="rank"></div>
   </div>
 
   <div class="card" id="unitCard"></div>
@@ -420,11 +438,34 @@ const yi=v=>'約'+Math.round(v/10000).toLocaleString('en-US')+'萬';
 if(!S.cur) S.cur='nt';
 // pill label in the chosen currency (NT$ in 萬, or RM in 萬)
 const pl=(u,p)=>S.cur==='rm'?'RM'+((S.pm==='spa'?u[5]:u[5]*(1-p.disc))/10000).toFixed(1)+'萬':yi(priceOf(u,p));
+// building-wide unit counts
+const typeCount={}, posCount={};
+UNITS.forEach(u=>{const b=baseType(u[2]); typeCount[b]=(typeCount[b]||0)+1; posCount[u[1]]=(posCount[u[1]]||0)+1;});
+// recommendation order (from the 2026-10-30 sales briefing), phrased for clients
+const RANK=[
+ {u:['02'],t:'看 Merdeka 118 的雙鑰',w:'30 坪以下唯一正對 Merdeka 118 的戶型，未來城市景觀持續發展，稀有度最高。'},
+ {u:['10','11'],t:'入門雙鑰・正對 KLCC',w:'總價最親民的看景雙鑰，正對雙子星與 KL Tower 前方無遮擋，出電梯即到。'},
+ {u:['09'],t:'雙鑰升級版',w:'比 10、11 號多約 1.6 坪，價差小；低樓層望向 L11 空中森林，有度假感。'},
+ {u:['13A','15'],t:'TRX 側小雙鑰',w:'望向 TRX、時代廣場與 LaLaport；15 號旁有牆面最私密，13A 總價略低。'},
+ {u:['01'],t:'三景角間大三房',w:'同時看 KL Tower、KLCC、Merdeka 118，主臥附私人按摩浴池，全案最大坪數。'}
+];
+const rankOf=no=>RANK.findIndex(r=>r.u.includes(no));
+function drawRank(){
+  $('rank').innerHTML=RANK.map((r,i)=>{const t=baseType(byKey[S.floor+'-'+r.u[0]]?.[2]||UNITS.find(x=>x[1]===r.u[0])[2]);
+    const pos=r.u.reduce((a,n)=>a+(posCount[n]||0),0);
+    return `<button class="rk${r.u.includes(S.unit)?' on':''}" data-u="${r.u[0]}"><span class="no">${i+1}</span>
+      <span><b>${r.u.map(n=>n+' 號').join('、')}・${r.t}</b><small>${r.w}</small></span>
+      <span class="q"><b>${pos} 戶</b><small>Type ${t} 共 ${typeCount[t]} 戶</small></span></button>`;}).join('');
+  $('rank').querySelectorAll('.rk').forEach(b=>b.onclick=()=>{const n=b.dataset.u; if(byKey[S.floor+'-'+n]){S.unit=n;render();$('map').scrollIntoView({behavior:'smooth',block:'center'});}});
+}
 function infoHtml(no){
   const p=P(), u=byKey[S.floor+'-'+no]; if(!u) return '';
-  const spa=u[5], net=u[5]*(1-p.disc), ping=u[3]/PING, c=COL[no];
+  const spa=u[5], net=u[5]*(1-p.disc), ping=u[3]/PING, c=COL[no], bt=baseType(u[2]), ri=rankOf(no), rec=REC[no];
+  const why=ri>=0?`<b>推薦第 ${ri+1} 順位｜${RANK[ri].t}</b><br>${RANK[ri].w}`:`<b>${rec[1]}</b><br>${rec[2].join('；')}`;
   return `<div class="uh"><b>${u[0]}-${u[1]}</b><span class="hint">${no===S.unit?'已選單位':'預覽'}</span></div>
    <div class="uh"><span>Type ${u[2]}・${u[3].toLocaleString('en-US')} sf・${ping.toFixed(2)} 台坪・${c.key===2?'雙鑰':'1 key'}・${c.face}</span></div>
+   <div class="why">${why}</div>
+   <div class="cnt"><span>全案 Type ${bt} 共 ${typeCount[bt]} 戶</span><span>${no} 號位共 ${posCount[no]} 戶</span></div>
    <table><tr><th>價格</th><th>馬幣 RM</th><th>台幣 NT$</th></tr>
    <tr><td>SPA 合約價</td><td class="n">${fmt(spa)}</td><td class="n">${fmt(spa*p.fx)}</td></tr>
    <tr class="net"><td>實際成交價<span class="s">建商折價 ${Math.round(p.disc*100)}%</span></td><td class="n">${fmt(net)}</td><td class="n nt">${fmt(net*p.fx)}</td></tr>
@@ -732,7 +773,7 @@ $('pdfBtn').onclick=async()=>{
 
 function render(){save();const u=cur();if(!u)return;const p=P();
   $('sumU').textContent=`${u[0]}-${u[1]}・Type ${u[2]}`; $('sumP').textContent=`NT$ ${wan(u[5]*(1-p.disc)*p.fx)}`;
-  drawMap();drawTiles();drawUnit();drawCalc();if(S.view===3)buildReport();}
+  drawMap();drawTiles();drawRank();drawUnit();drawCalc();if(S.view===3)buildReport();}
 const H=window.claude?.hot; const start=()=>{render();};
 H?.ready?H.ready(start):start();
 </script>
