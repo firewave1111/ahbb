@@ -66,7 +66,7 @@ select{font-size:17px;font-weight:700;text-align:center}
 .uinfo td{padding:6px 0}
 .uinfo tr.net td{font-weight:700}
 .uinfo tr.net td.n.nt{color:var(--brass)}
-.view{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.view{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}.view.first{border-top:0;padding-top:0;margin-top:12px}
 .view .vh{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .vnav{display:flex;align-items:center;gap:6px}
 .vnav .btn{padding:6px 12px}
@@ -634,8 +634,12 @@ function drawUnit(){
   $('unitCard').innerHTML=`
    <div class="unit-head"><div><span class="pill ${I.rec[0]}">${I.rec[1]}</span><h2 style="margin-top:6px">${I.fl}-${I.no}</h2></div>
      <div style="text-align:right;font-size:13px;color:var(--mute)">Type ${I.type}<br>${I.sf.toLocaleString()} 呎・約 ${I.ping.toFixed(1)} 坪</div></div>
-   <div class="planimg" id="planOpen" role="button" tabindex="0" aria-label="放大平面圖"><img src="${PLANS[I.bt]}" alt="Type ${I.bt} 家具配置圖"></div>
-   <div class="cap">點圖可放大${I.type.includes('(M)')?'・本戶為鏡像格局':''}${I.fl==='12'?'・12 樓部分戶型面積較大，以 SPA 為準':''}</div>
+   <div class="view first" id="viewBox">
+     <div class="vh"><h3>實景視野・${I.no} 號位</h3>
+       <div class="vnav"><button class="btn" id="vDown" aria-label="看下一層視野">▼</button><span id="vLv">L${viewLv(I.fl)}</span><button class="btn" id="vUp" aria-label="看上一層視野">▲</button></div></div>
+     <div class="vimg" id="vImgBox"><img id="vImg" alt="${I.fl}-${I.no} 窗外實景"><p class="vload" id="vLoad">載入實景中…</p></div>
+     <p class="cap">窗外實拍視野，依樓層高度模擬；實際景觀以現場為準。照片來源：<a id="vLink" href="#" target="_blank" rel="noopener">Ace Living 實景視野</a></p>
+   </div>
    <div class="facts">
      <div class="fact"><small>房型</small><b>${I.col.bed} 房・${I.col.key===2?'雙鑰':'1 key'}</b></div>
      <div class="fact"><small>景觀</small><b>${I.col.face}</b></div>
@@ -646,12 +650,11 @@ function drawUnit(){
      <div class="p"><small>SPA 合約價</small><b>RM ${fmt(I.list)}</b><div class="nt">NT$ ${wan(I.list*I.p.fx)}</div></div>
      <div class="p main"><small>實際成交價（建商折價 ${Math.round(I.p.disc*100)}%）</small><b>RM ${fmt(I.spa)}</b><div class="nt">NT$ ${wan(I.spa*I.p.fx)}・每坪 ${wan(I.spa*I.p.fx/I.ping)}</div></div>
    </div>
-   <div class="view" id="viewBox">
-     <div class="vh"><h3>實景視野・${I.no} 號位</h3>
-       <div class="vnav"><button class="btn" id="vDown" aria-label="看下一層視野">▼</button><span id="vLv">L${viewLv(I.fl)}</span><button class="btn" id="vUp" aria-label="看上一層視野">▲</button></div></div>
-     <div class="vimg" id="vImgBox"><img id="vImg" alt="${I.fl}-${I.no} 窗外實景"><p class="vload" id="vLoad">載入實景中…</p></div>
-     <p class="cap">窗外實拍視野，依樓層高度模擬；實際景觀以現場為準。照片來源：<a id="vLink" href="#" target="_blank" rel="noopener">Ace Living 實景視野</a></p>
-   </div>`;
+
+   <h3 style="margin-top:14px">格局平面圖</h3>
+   <div class="planimg" id="planOpen" role="button" tabindex="0" aria-label="放大平面圖"><img src="${PLANS[I.bt]}" alt="Type ${I.bt} 家具配置圖"></div>
+   <div class="cap">點圖可放大${I.type.includes('(M)')?'・本戶為鏡像格局':''}${I.fl==='12'?'・12 樓部分戶型面積較大，以 SPA 為準':''}</div>
+`;
   showView(I.no, viewLv(I.fl));
   const open=()=>{$('zoomBody').innerHTML=`<img src="${PLANS[I.bt]}" alt="">`;$('zoomT').textContent=`Type ${I.bt}・${I.fl}-${I.no}`;$('zoom').hidden=false;};
   $('planOpen').onclick=open;$('planOpen').onkeydown=e=>{if(e.key==='Enter')open();};
