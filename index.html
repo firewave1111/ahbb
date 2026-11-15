@@ -917,9 +917,12 @@ function drawUnit(){
 function showView(no,lv){
   lv=Math.min(73,Math.max(12,lv)); const url=`${VIEW_BASE}assets/${VPOS[no]}/L${lv}.JPG`;
   const img=$('vImg'),ld=$('vLoad'); if(!img) return;
-  $('vLv').textContent='L'+lv; $('vLink').href=url; ld.hidden=false; ld.textContent=t('loading'); img.style.opacity=.35;
-  img.onload=()=>{ld.hidden=true;img.style.opacity=1;};
-  img.onerror=()=>{img.removeAttribute('src');img.style.opacity=1;ld.hidden=false;ld.innerHTML=t('viewErr',{u:url,l:lv});};
+  $('vLv').textContent='L'+lv; $('vLink').href=url; ld.hidden=false; ld.textContent=t('loading'); img.style.opacity=.35; img.hidden=false;
+  img.referrerPolicy='no-referrer'; let tries=0;
+  img.onload=()=>{ld.hidden=true;img.style.opacity=1;img.hidden=false;};
+  // retry once (slow mobile networks), then hide the broken image and offer the link
+  img.onerror=()=>{ if(tries++<1){ img.src=url+'?r='+Date.now(); return; }
+    img.hidden=true; img.removeAttribute('src'); ld.hidden=false; ld.style.position='static'; ld.style.padding='28px 12px'; ld.innerHTML=t('viewErr',{u:url,l:lv});};
   img.src=url;
   $('vDown').onclick=()=>showView(no,lv-1); $('vUp').onclick=()=>showView(no,lv+1);
   $('vImgBox').onclick=e=>{if(e.target.tagName==='IMG'&&img.src){$('zoomBody').innerHTML=`<img src="${url}" alt="">`;$('zoomT').textContent=t('viewZoom',{no,l:lv});$('zoom').hidden=false;}};
